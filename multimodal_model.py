@@ -1,13 +1,18 @@
 import torch
 import torch.nn as nn
 
-class StockPredictor(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int):
-        super(StockPredictor, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size, output_size)
+class MultiModalStockPredictor(nn.Module):
+    def __init__(self, tech_input_size, sentiment_input_size, hidden_size, num_layers, output_size):
+        super(MultiModalStockPredictor, self).__init__()
+        self.tech_lstm = nn.LSTM(tech_input_size, hidden_size, num_layers, batch_first=True)
+        self.sentiment_lstm = nn.LSTM(sentiment_input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size * 2, output_size)
 
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        out = self.fc(out[:, -1, :])
-        return out
+    def forward(self, tech_x, sentiment_x):
+        tech_out, _ = self.tech_lstm(tech_x) 
+        sentiment_out, _ = self.sentiment_lstm(sentiment_x) 
+        tech_last = tech_out[:, -1, :]
+        sentiment_last = sentiment_out[:, -1, :]
+        fused = torch.cat((tech_last, sentiment_last), dim=1)
+        output = self.fc(fused)
+        return output
